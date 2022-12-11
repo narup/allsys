@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
 static ILLEGAL: &'static str = "ILLEGAL";
+static EOF: &'static str = "EOF";
 static WHITESPACE: &'static str = "WHITESPACE";
 
-//operators
+//single character tokens
 static PLUS: &'static str = "+";
 static MINUS: &'static str = "-";
 static MULTIPLY: &'static str = "*";
@@ -13,6 +14,10 @@ static LPAREN: &'static str = "(";
 static RPAREN: &'static str = "(";
 static LBRACKET: &'static str = "[";
 static RBRACKET: &'static str = "]";
+static DOT: &'static str = ".";
+static LBRACE: &'static str = "{";
+static RBRACE: &'static str = "}";
+static COMMA: &'static str = ",";
 
 //comparators
 static GREATER_THAN: &'static str = ">";
@@ -25,6 +30,7 @@ static LESSER_AND_EQ: &'static str = "<=";
 static ASSIGN: &'static str = "=";
 
 //Keywords
+static PRINT: &'static str = "print";
 static LET: &'static str = "let";
 static VAR: &'static str = "var";
 static DEF: &'static str = "def";
@@ -37,14 +43,15 @@ static ELSIF: &'static str = "elsif";
 static RAISE: &'static str = "raise";
 static ERROR: &'static str = "error";
 static HANDLE: &'static str = "handle";
-static LBRACE: &'static str = "{";
-static RBRACE: &'static str = "}";
-static COMMA: &'static str = ",";
 static CASE: &'static str = "case";
 static NONE: &'static str = "none";
 static COLON: &'static str = ":";
 static CONTINUE: &'static str = "continue";
 static BREAK: &'static str = "break";
+static TRUE: &'static str = "true";
+static FALSE: &'static str = "false";
+static OR: &'static str = "or";
+static AND: &'static str = "and";
 
 #[derive(Debug)]
 pub struct Token {
@@ -55,48 +62,65 @@ pub struct Token {
 
 #[derive(strum_macros::Display, Debug, PartialEq, Eq)]
 pub enum TokenType {
-    ILLEGAL,
-    WHITESPACE,
-    EOF,
+    Illegal,
+    Whitespace,
+    EndOfFile,
 
     //identifier + literals
-    NUMBER,
-    INTEGER,
-
-    ASSIGN,
+    Identifier,
+    Number,
+    String,
+    Assign,
 
     //Operators
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    DIVIDE,
-    MODULO,
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    Modulo,
 
     //comparators
-    EQ,
-    NEQ,
-    GREATER_THAN,
-    LESSER_THAN,
-    GREATER_AND_EQ,
-    LESSER_AND_EQ,
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LesserThan,
+    GreaterThanOrEqual,
+    LesserThanOrEqual,
 
     //Delimiters
-    COMMA,
-    SEMICOLON,
+    Comma,
+    Semicolon,
 
-    LPAREN,
-    RPAREN,
-    LBRACE,
-    RBRACE,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
 
     //Keywords
-    FUNCTION,
-    LET,
+    Def,
+    Defp,
+    Let,
+    Var,
+    If,
+    Else,
+    ElsIf,
+    For,
+    Case,
+    True,
+    False,
+    Or,
+    And,
+    None,
+    Continue,
+    Error,
+    Handle,
+    Raise,
 }
 
 pub struct Lexer {
     input: String,
     position: usize, // current position in input (points to current char)
+    read_position: usize, // read position to look ahead
     ch: u8,
 }
 
@@ -108,7 +132,7 @@ impl Lexer {
             let token = self.next_token();
             self.increment_position();
 
-            if matches!(token.token_type, TokenType::WHITESPACE) {
+            if matches!(token.token_type, TokenType::Whitespace) {
                 continue;
             }
 
@@ -118,26 +142,55 @@ impl Lexer {
         tokens
     }
 
-    fn next_token(&self) -> Token {
-        let next_char = self.input.chars().nth(self.position);
+    fn next_token(&mut self) -> Token {
+        let next_char = self.read_char();
         match next_char {
             Some(c) => match c {
                 ' ' | '\r' | '\n' | '\t' => {
-                    return get_token(self.position, TokenType::WHITESPACE, WHITESPACE)
+                    return get_token(self.position, TokenType::Whitespace, WHITESPACE)
                 }
-                '+' => return get_token(self.position, TokenType::PLUS, PLUS),
-                '-' => return get_token(self.position, TokenType::MINUS, MINUS),
-                '*' => return get_token(self.position, TokenType::MINUS, MINUS),
-                '(' => return get_token(self.position, TokenType::LPAREN, LPAREN),
-                ')' => return get_token(self.position, TokenType::RPAREN, RPAREN),
-                _ => return get_token(self.position, TokenType::ILLEGAL, ILLEGAL),
+                '+' => return get_token(self.position, TokenType::Plus, PLUS),
+                '-' => return get_token(self.position, TokenType::Minus, MINUS),
+                '*' => return get_token(self.position, TokenType::Multiply, MULTIPLY),
+                '(' => return get_token(self.position, TokenType::LeftParen, LPAREN),
+                ')' => return get_token(self.position, TokenType::RightParen, RPAREN),
+                _ => return self.get_complex_token(c),
             },
-            None => return get_token(self.position, TokenType::ILLEGAL, ILLEGAL),
+            None => return get_token(self.position, TokenType::Illegal, ILLEGAL),
         }
+    }
+
+    fn get_complex_token(&mut self, current_char: char) -> Token {
+        if current_char.is_digit(10) {
+            let mut digit = String::from("");
+            //handle digit
+            while let Some(c) = self.peak_char() {
+                if c.is_whitespace() {
+                    break;
+                }
+                digit.push(c);
+            }
+            return get_token(self.position, TokenType::Number, Box::leak(digit.into_boxed_str()));
+        }
+
+        return get_token(self.position, TokenType::Illegal, ILLEGAL);
+    }
+
+    fn read_char(&self) -> Option<char> {
+        self.input.chars().nth(self.position)
+    }
+
+    fn peak_char(&mut self) -> Option<char> {
+        self.read_position = self.read_position + 1;
+        self.input.chars().nth(self.read_position)
     }
 
     fn increment_position(&mut self) {
         self.position = self.position + 1;
+    }
+
+    fn increment_read_position(&mut self) {
+        self.read_position = self.read_position + 1;
     }
 }
 
@@ -153,6 +206,7 @@ pub fn new(input: String) -> Lexer {
     Lexer {
         input: input.to_string(),
         position: 0,
+        read_position: 0,
         ch: b' ',
     }
 }
@@ -176,17 +230,23 @@ mod tests {
 
     #[test]
     fn lexer_test() {
-        let input = String::from("+(");
+        let input = String::from("1 = 2");
 
         let mut output_tokens: Vec<Token> = Vec::new();
         output_tokens.push(Token {
-            token_type: TokenType::PLUS,
-            val: "+",
-            col: 4,
+            token_type: TokenType::Identifier,
+            val: "1",
+            col: 1,
         });
         output_tokens.push(Token {
-            token_type: TokenType::LPAREN,
-            val: "(",
+            token_type: TokenType::Equal,
+            val: "=",
+            col: 4,
+        });
+
+        output_tokens.push(Token {
+            token_type: TokenType::Identifier,
+            val: "2",
             col: 4,
         });
 
