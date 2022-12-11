@@ -121,24 +121,24 @@ pub struct Lexer {
     input: String,
     position: usize, // current position in input (points to current char)
     read_position: usize, // read position to look ahead
-    ch: u8,
 }
 
 impl Lexer {
     pub fn parse(&mut self) -> Vec<Token> {
+        println!("parsing the input: {}", self.input);
+
         let mut tokens = Vec::new();
 
-        while self.position < self.input.len() {
-            let token = self.next_token();
-            self.increment_position();
-
+        let mut token = self.next_token();
+        while token.token_type != TokenType::EndOfFile {
             if matches!(token.token_type, TokenType::Whitespace) {
+                token = self.next_token();
                 continue;
             }
-
+            println!("Next token: {:?}", token);
             tokens.push(token);
+            token = self.next_token();
         }
-
         tokens
     }
 
@@ -149,11 +149,13 @@ impl Lexer {
                 ' ' | '\r' | '\n' | '\t' => {
                     return get_token(self.position, TokenType::Whitespace, WHITESPACE)
                 }
+                '\0' => return get_token(self.position, TokenType::EndOfFile, EOF),
                 '+' => return get_token(self.position, TokenType::Plus, PLUS),
                 '-' => return get_token(self.position, TokenType::Minus, MINUS),
                 '*' => return get_token(self.position, TokenType::Multiply, MULTIPLY),
                 '(' => return get_token(self.position, TokenType::LeftParen, LPAREN),
                 ')' => return get_token(self.position, TokenType::RightParen, RPAREN),
+                '=' => return get_token(self.position, TokenType::Assign, ASSIGN),
                 _ => return self.get_complex_token(c),
             },
             None => return get_token(self.position, TokenType::Illegal, ILLEGAL),
@@ -161,36 +163,62 @@ impl Lexer {
     }
 
     fn get_complex_token(&mut self, current_char: char) -> Token {
+        let position = self.position - 1;
         if current_char.is_digit(10) {
-            let mut digit = String::from("");
             //handle digit
-            while let Some(c) = self.peak_char() {
-                if c.is_whitespace() {
+            while let Some(c) = self.peek_char() {
+                if c.is_digit(10) {
+                    self.read_char();
+                } else {
                     break;
                 }
-                digit.push(c);
             }
-            return get_token(self.position, TokenType::Number, Box::leak(digit.into_boxed_str()));
+
+            let s:String = (&self.input[position..self.position]).to_string();
+            return get_token(self.position, TokenType::Number, Box::leak(s.into_boxed_str()));
+        }
+        if current_char.is_alphabetic() {
+            while let Some(c) = self.peek_char() {
+                println!("current char: {}, next peek:{}", current_char, c);
+                if c.is_alphabetic() {
+                    self.read_char();
+                } else {
+                    break;
+                }
+            }
+
+            println!("Reading char at {}...{}", position, self.position);
+
+            let s:String = (&self.input[position..self.position]).to_string();
+            return get_token(self.position, TokenType::Identifier, Box::leak(s.into_boxed_str()));
         }
 
         return get_token(self.position, TokenType::Illegal, ILLEGAL);
     }
 
-    fn read_char(&self) -> Option<char> {
-        self.input.chars().nth(self.position)
+    fn read_char(&mut self) -> Option<char> {
+        if self.position >= self.input.len() {
+            return Some('\0');
+        }
+
+        let c = self.input.chars().nth(self.position);
+        self.increment_position();
+
+        return c;
     }
 
-    fn peak_char(&mut self) -> Option<char> {
-        self.read_position = self.read_position + 1;
-        self.input.chars().nth(self.read_position)
+    fn peek_char(&mut self) -> Option<char> {
+        if self.read_position >= self.input.len() {
+            return Some('\0');
+        }
+        self.input.chars().nth(self.read_position - 1)
     }
 
     fn increment_position(&mut self) {
         self.position = self.position + 1;
-    }
+        self.read_position = self.position + 1;
 
-    fn increment_read_position(&mut self) {
-        self.read_position = self.read_position + 1;
+        println!("Increment positions, current: {}, read: {}", self.position, self.read_position);
     }
 }
 
@@ -207,7 +235,6 @@ pub fn new(input: String) -> Lexer {
         input: input.to_string(),
         position: 0,
         read_position: 0,
-        ch: b' ',
     }
 }
 
@@ -230,22 +257,22 @@ mod tests {
 
     #[test]
     fn lexer_test() {
-        let input = String::from("1 = 2");
+        let input = String::from("x = 2");
 
         let mut output_tokens: Vec<Token> = Vec::new();
         output_tokens.push(Token {
             token_type: TokenType::Identifier,
-            val: "1",
+            val: "x",
             col: 1,
         });
         output_tokens.push(Token {
-            token_type: TokenType::Equal,
+            token_type: TokenType::Assign,
             val: "=",
             col: 4,
         });
 
         output_tokens.push(Token {
-            token_type: TokenType::Identifier,
+            token_type: TokenType::Number,
             val: "2",
             col: 4,
         });
