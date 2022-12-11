@@ -1,1 +1,62 @@
-let x = 5 + 5
+x = 5 + 5
+1 > 2
+3 < 0
+1 == 2
+
+var x = 2
+let = 3
+
+fn print_hello {
+    print("hello rusty")
+}
+
+fn add_two(a: int, b: int) {
+    a + b
+}
+
+if (a == b), { print("equal") }
+if (a == b) {
+    print("equal")
+}
+
+if (b == c) {
+    print("equal")
+} else {
+    print("not equal")
+}
+
+case value {
+    value1: { print("value1") },
+    value2: { print("value2") },
+    none: { print("none") }
+}
+
+for v in values {
+}
+
+for (v, index) in values {
+}
+
+//-- Module ----
+
+import io
+
+module mymodule {
+
+    def public_function1() {
+
+    }
+
+    defp private_function() {
+
+    }
+}
+
+mymodule.public_function()
+
+//-- Module ----
+
+//types: string, int, float, byte, func, mod, type
+
+rty> print "hello"
+rty> add_two(a, b)
