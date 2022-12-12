@@ -1,121 +1,7 @@
 #![allow(dead_code)]
 
-static ILLEGAL: &'static str = "ILLEGAL";
-static EOF: &'static str = "EOF";
-static WHITESPACE: &'static str = "WHITESPACE";
-
-//single character tokens
-static PLUS: &'static str = "+";
-static MINUS: &'static str = "-";
-static MULTIPLY: &'static str = "*";
-static DIVIDE: &'static str = "/";
-static MODULO: &'static str = "%";
-static LPAREN: &'static str = "(";
-static RPAREN: &'static str = "(";
-static LBRACKET: &'static str = "[";
-static RBRACKET: &'static str = "]";
-static DOT: &'static str = ".";
-static LBRACE: &'static str = "{";
-static RBRACE: &'static str = "}";
-static COMMA: &'static str = ",";
-
-//comparators
-static GREATER_THAN: &'static str = ">";
-static LESSER_THAN: &'static str = "<";
-static EQ: &'static str = "==";
-static NEQ: &'static str = "!=";
-static GREATER_AND_EQ: &'static str = ">=";
-static LESSER_AND_EQ: &'static str = "<=";
-
-static ASSIGN: &'static str = "=";
-
-//Keywords
-static PRINT: &'static str = "print";
-static LET: &'static str = "let";
-static VAR: &'static str = "var";
-static DEF: &'static str = "def";
-static DEFP: &'static str = "defp";
-static MODULE: &'static str = "module";
-static FOR: &'static str = "for";
-static IF: &'static str = "if";
-static ELSE: &'static str = "else";
-static ELSIF: &'static str = "elsif";
-static RAISE: &'static str = "raise";
-static ERROR: &'static str = "error";
-static HANDLE: &'static str = "handle";
-static CASE: &'static str = "case";
-static NONE: &'static str = "none";
-static COLON: &'static str = ":";
-static CONTINUE: &'static str = "continue";
-static BREAK: &'static str = "break";
-static TRUE: &'static str = "true";
-static FALSE: &'static str = "false";
-static OR: &'static str = "or";
-static AND: &'static str = "and";
-
-#[derive(Debug)]
-pub struct Token {
-    token_type: TokenType,
-    val: &'static str,
-    col: usize,
-}
-
-#[derive(strum_macros::Display, Debug, PartialEq, Eq)]
-pub enum TokenType {
-    Illegal,
-    Whitespace,
-    EndOfFile,
-
-    //identifier + literals
-    Identifier,
-    Number,
-    String,
-    Assign,
-
-    //Operators
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-    Modulo,
-
-    //comparators
-    Equal,
-    NotEqual,
-    GreaterThan,
-    LesserThan,
-    GreaterThanOrEqual,
-    LesserThanOrEqual,
-
-    //Delimiters
-    Comma,
-    Semicolon,
-
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-
-    //Keywords
-    Def,
-    Defp,
-    Let,
-    Var,
-    If,
-    Else,
-    ElsIf,
-    For,
-    Case,
-    True,
-    False,
-    Or,
-    And,
-    None,
-    Continue,
-    Error,
-    Handle,
-    Raise,
-}
+use std::collections::HashMap;
+use crate::token;
 
 pub struct Lexer {
     input: String,
@@ -123,17 +9,28 @@ pub struct Lexer {
     read_position: usize, // read position to look ahead
 }
 
+// contains the map of all the keywords
+fn keyword_map() -> HashMap<&'static str, &'static str> {
+    let mut map = HashMap::new();
+    map.insert(token::VAR, token::VAR);
+    map
+}
+
 impl Lexer {
-    pub fn parse(&mut self) -> Vec<Token> {
+    pub fn parse(&mut self) -> Vec<token::Token> {
         println!("parsing the input: {}", self.input);
 
         let mut tokens = Vec::new();
 
         let mut token = self.next_token();
-        while token.token_type != TokenType::EndOfFile {
-            if matches!(token.token_type, TokenType::Whitespace) {
+        while token.token_type != token::TokenType::EndOfFile {
+            if matches!(token.token_type, token::TokenType::Whitespace) {
                 token = self.next_token();
                 continue;
+            }
+            if matches!(token.token_type, token::TokenType::Illegal) {
+                print_error(token.col, format!("uncrecognized character {}", token.val).as_str());
+                panic!("Exiting due to error");
             }
             println!("Next token: {:?}", token);
             tokens.push(token);
@@ -142,27 +39,27 @@ impl Lexer {
         tokens
     }
 
-    fn next_token(&mut self) -> Token {
+    fn next_token(&mut self) -> token::Token {
         let next_char = self.read_char();
         match next_char {
             Some(c) => match c {
                 ' ' | '\r' | '\n' | '\t' => {
-                    return get_token(self.position, TokenType::Whitespace, WHITESPACE)
+                    return get_token(self.position, token::TokenType::Whitespace, token::WHITESPACE)
                 }
-                '\0' => return get_token(self.position, TokenType::EndOfFile, EOF),
-                '+' => return get_token(self.position, TokenType::Plus, PLUS),
-                '-' => return get_token(self.position, TokenType::Minus, MINUS),
-                '*' => return get_token(self.position, TokenType::Multiply, MULTIPLY),
-                '(' => return get_token(self.position, TokenType::LeftParen, LPAREN),
-                ')' => return get_token(self.position, TokenType::RightParen, RPAREN),
-                '=' => return get_token(self.position, TokenType::Assign, ASSIGN),
+                '\0' => return get_token(self.position, token::TokenType::EndOfFile, token::EOF),
+                '+' => return get_token(self.position, token::TokenType::Plus, token::PLUS),
+                '-' => return get_token(self.position, token::TokenType::Minus, token::MINUS),
+                '*' => return get_token(self.position, token::TokenType::Multiply, token::MULTIPLY),
+                '(' => return get_token(self.position, token::TokenType::LeftParen, token::LPAREN),
+                ')' => return get_token(self.position, token::TokenType::RightParen, token::RPAREN),
+                '=' => return get_token(self.position, token::TokenType::Assign, token::ASSIGN),
                 _ => return self.get_complex_token(c),
             },
-            None => return get_token(self.position, TokenType::Illegal, ILLEGAL),
+            None => return get_token(self.position, token::TokenType::Illegal, token::ILLEGAL),
         }
     }
 
-    fn get_complex_token(&mut self, current_char: char) -> Token {
+    fn get_complex_token(&mut self, current_char: char) -> token::Token {
         let position = self.position - 1;
         if current_char.is_digit(10) {
             //handle digit
@@ -175,7 +72,7 @@ impl Lexer {
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return get_token(self.position, TokenType::Number, Box::leak(s.into_boxed_str()));
+            return get_token(self.position, token::TokenType::Number, Box::leak(s.into_boxed_str()));
         }
         if current_char.is_alphabetic() {
             while let Some(c) = self.peek_char() {
@@ -190,10 +87,10 @@ impl Lexer {
             println!("Reading char at {}...{}", position, self.position);
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return get_token(self.position, TokenType::Identifier, Box::leak(s.into_boxed_str()));
+            return get_token(self.position, token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
         }
 
-        return get_token(self.position, TokenType::Illegal, ILLEGAL);
+        return get_token(self.position, token::TokenType::Illegal, token::ILLEGAL);
     }
 
     fn read_char(&mut self) -> Option<char> {
@@ -222,8 +119,12 @@ impl Lexer {
     }
 }
 
-fn get_token(col: usize, token_type: TokenType, val: &'static str) -> Token {
-    Token {
+fn print_error(line:usize, err: &str) {
+    println!("ERROR:[line:{}, error: {}]", line, err);
+}
+
+fn get_token(col: usize, token_type: token::TokenType, val: &'static str) -> token::Token {
+    token::Token {
         col,
         token_type,
         val,
@@ -246,9 +147,17 @@ pub fn mod_name() -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::mod_name;
+
+    use std::collections::HashMap;
 
     use super::*;
+
+    // contains the map of all the keywords
+    fn test_cases_map() -> HashMap<String, Vec<token::Token>> {
+        let mut map = HashMap::new();
+        map.insert("xy = 2".to_string(), test_tokens_1());
+        map
+    }
 
     #[test]
     fn it_works() {
@@ -256,31 +165,17 @@ mod tests {
     }
 
     #[test]
-    fn lexer_test() {
-        let input = String::from("x = 2");
+    fn test_1() {
+        for (k, v) in test_cases_map() {
+            let l = new(k);
+            lexer_test(l, v);
+        }
+    }
 
-        let mut output_tokens: Vec<Token> = Vec::new();
-        output_tokens.push(Token {
-            token_type: TokenType::Identifier,
-            val: "x",
-            col: 1,
-        });
-        output_tokens.push(Token {
-            token_type: TokenType::Assign,
-            val: "=",
-            col: 4,
-        });
-
-        output_tokens.push(Token {
-            token_type: TokenType::Number,
-            val: "2",
-            col: 4,
-        });
-
-        let mut l = new(input);
+    fn lexer_test(mut l:Lexer, expected_tokens: Vec<token::Token>) {
         let tokens = l.parse();
         for (index, t) in tokens.iter().enumerate() {
-            let expected_t: Option<&Token> = output_tokens.get(index);
+            let expected_t: Option<&token::Token> = expected_tokens.get(index);
             match expected_t {
                 Some(expected_t) => {
                     assert_eq!(expected_t.val, t.val);
@@ -291,5 +186,27 @@ mod tests {
         }
 
         println!("test passed");
+    }
+
+    fn test_tokens_1() -> Vec<token::Token>{
+        let mut output_tokens: Vec<token::Token> = Vec::new();
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Identifier,
+            val: "xy",
+            col: 1,
+        });
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Assign,
+            val: "=",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Number,
+            val: "2",
+            col: 4,
+        });
+
+        output_tokens
     }
 }
