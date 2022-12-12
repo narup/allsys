@@ -10,9 +10,10 @@ pub struct Lexer {
 }
 
 // contains the map of all the keywords
-fn keyword_map() -> HashMap<&'static str, &'static str> {
+fn keyword_map() -> HashMap<&'static str, token::TokenType> {
     let mut map = HashMap::new();
-    map.insert(token::VAR, token::VAR);
+    map.insert(token::VAR, token::TokenType::Var);
+    map.insert(token::LET, token::TokenType::Let);
     map
 }
 
@@ -21,21 +22,19 @@ impl Lexer {
         println!("parsing the input: {}", self.input);
 
         let mut tokens = Vec::new();
-
-        let mut token = self.next_token();
-        while token.token_type != token::TokenType::EndOfFile {
+        while self.has_more_token() {
+            let token = self.next_token();
             if matches!(token.token_type, token::TokenType::Whitespace) {
-                token = self.next_token();
                 continue;
             }
             if matches!(token.token_type, token::TokenType::Illegal) {
-                print_error(token.col, format!("uncrecognized character {}", token.val).as_str());
+                print_error(format!("uncrecognized character '{}' at col {}", token.val, token.col).as_str());
                 panic!("Exiting due to error");
             }
             println!("Next token: {:?}", token);
             tokens.push(token);
-            token = self.next_token();
         }
+
         tokens
     }
 
@@ -44,18 +43,28 @@ impl Lexer {
         match next_char {
             Some(c) => match c {
                 ' ' | '\r' | '\n' | '\t' => {
-                    return get_token(self.position, token::TokenType::Whitespace, token::WHITESPACE)
+                    return self.get_token(token::TokenType::Whitespace, token::WHITESPACE)
                 }
-                '\0' => return get_token(self.position, token::TokenType::EndOfFile, token::EOF),
-                '+' => return get_token(self.position, token::TokenType::Plus, token::PLUS),
-                '-' => return get_token(self.position, token::TokenType::Minus, token::MINUS),
-                '*' => return get_token(self.position, token::TokenType::Multiply, token::MULTIPLY),
-                '(' => return get_token(self.position, token::TokenType::LeftParen, token::LPAREN),
-                ')' => return get_token(self.position, token::TokenType::RightParen, token::RPAREN),
-                '=' => return get_token(self.position, token::TokenType::Assign, token::ASSIGN),
+                '\0' => return self.get_token(token::TokenType::EndOfFile, token::EOF),
+                '+' => return self.get_token(token::TokenType::Plus, token::PLUS),
+                '-' => return self.get_token(token::TokenType::Minus, token::MINUS),
+                '*' => return self.get_token(token::TokenType::Multiply, token::MULTIPLY),
+                '/' => return self.get_token(token::TokenType::Divide, token::DIVIDE),
+                '%' => return self.get_token(token::TokenType::Modulo, token::MODULO),
+                '(' => return self.get_token(token::TokenType::LeftParen, token::LPAREN),
+                ')' => return self.get_token(token::TokenType::RightParen, token::RPAREN),
+                '{' => return self.get_token(token::TokenType::LeftBrace, token::LBRACE),
+                '}' => return self.get_token(token::TokenType::RightBrace, token::RBRACE),
+                '[' => return self.get_token(token::TokenType::LeftBracket, token::LBRACKET),
+                ']' => return self.get_token(token::TokenType::RightBracket, token::RBRACKET),
+                '=' => return self.get_token(token::TokenType::Assign, token::ASSIGN),
+                ',' => return self.get_token(token::TokenType::Comma, token::COMMA),
+                ':' => return self.get_token(token::TokenType::Colon, token::COLON),
+                '>' => return self.get_token(token::TokenType::GreaterThan, token::GREATER_THAN),
+                '<' => return self.get_token(token::TokenType::LesserThan, token::LESSER_THAN),
                 _ => return self.get_complex_token(c),
             },
-            None => return get_token(self.position, token::TokenType::Illegal, token::ILLEGAL),
+            None => return self.get_token(token::TokenType::Illegal, token::ILLEGAL),
         }
     }
 
@@ -72,7 +81,7 @@ impl Lexer {
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return get_token(self.position, token::TokenType::Number, Box::leak(s.into_boxed_str()));
+            return self.get_token(token::TokenType::Number, Box::leak(s.into_boxed_str()));
         }
         if current_char.is_alphabetic() {
             while let Some(c) = self.peek_char() {
@@ -87,14 +96,23 @@ impl Lexer {
             println!("Reading char at {}...{}", position, self.position);
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return get_token(self.position, token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
+            return self.get_token(token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
         }
 
-        return get_token(self.position, token::TokenType::Illegal, token::ILLEGAL);
+        let s = String::from(current_char);
+        return self.get_token(token::TokenType::Illegal, Box::leak(s.into_boxed_str()));
+    }
+
+    fn get_token(&mut self, token_type: token::TokenType, val: &'static str) -> token::Token {
+        token::Token {
+            col: self.position,
+            token_type,
+            val,
+        }
     }
 
     fn read_char(&mut self) -> Option<char> {
-        if self.position >= self.input.len() {
+        if self.position > self.input.len() {
             return Some('\0');
         }
 
@@ -105,7 +123,7 @@ impl Lexer {
     }
 
     fn peek_char(&mut self) -> Option<char> {
-        if self.read_position >= self.input.len() {
+        if self.read_position > self.input.len() {
             return Some('\0');
         }
         self.input.chars().nth(self.read_position - 1)
@@ -117,18 +135,14 @@ impl Lexer {
 
         println!("Increment positions, current: {}, read: {}", self.position, self.read_position);
     }
-}
 
-fn print_error(line:usize, err: &str) {
-    println!("ERROR:[line:{}, error: {}]", line, err);
-}
-
-fn get_token(col: usize, token_type: token::TokenType, val: &'static str) -> token::Token {
-    token::Token {
-        col,
-        token_type,
-        val,
+    fn has_more_token(&self) -> bool {
+        self.position < self.input.len()
     }
+}
+
+fn print_error(err: &str) {
+    println!("ERROR:{}", err);
 }
 
 pub fn new(input: String) -> Lexer {
@@ -155,7 +169,7 @@ mod tests {
     // contains the map of all the keywords
     fn test_cases_map() -> HashMap<String, Vec<token::Token>> {
         let mut map = HashMap::new();
-        map.insert("xy = 2".to_string(), test_tokens_1());
+        map.insert("x = 2".to_string(), test_tokens_1());
         map
     }
 
@@ -192,7 +206,7 @@ mod tests {
         let mut output_tokens: Vec<token::Token> = Vec::new();
         output_tokens.push(token::Token {
             token_type: token::TokenType::Identifier,
-            val: "xy",
+            val: "x",
             col: 1,
         });
         output_tokens.push(token::Token {

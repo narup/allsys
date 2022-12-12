@@ -17,6 +17,7 @@ pub static DOT: &'static str = ".";
 pub static LBRACE: &'static str = "{";
 pub static RBRACE: &'static str = "}";
 pub static COMMA: &'static str = ",";
+pub static COLON: &'static str = ":";
 //comparators
 pub static GREATER_THAN: &'static str = ">";
 pub static LESSER_THAN: &'static str = "<";
@@ -41,7 +42,6 @@ pub static ERROR: &'static str = "error";
 pub static HANDLE: &'static str = "handle";
 pub static CASE: &'static str = "case";
 pub static NONE: &'static str = "none";
-pub static COLON: &'static str = ":";
 pub static CONTINUE: &'static str = "continue";
 pub static BREAK: &'static str = "break";
 pub static TRUE: &'static str = "true";
@@ -85,12 +85,14 @@ pub enum TokenType {
 
     //Delimiters
     Comma,
-    Semicolon,
+    Colon,
 
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
+    LeftBracket,
+    RightBracket,
 
     //Keywords
     Def,
