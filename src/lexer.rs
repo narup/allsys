@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::process;
 use crate::token;
 
 pub struct Lexer {
@@ -29,9 +30,9 @@ impl Lexer {
             }
             if matches!(token.token_type, token::TokenType::Illegal) {
                 print_error(format!("uncrecognized character '{}' at col {}", token.val, token.col).as_str());
-                panic!("Exiting due to error");
+                println!("^^^exiting program execution^^^");
+                process::exit(1);
             }
-            println!("Next token: {:?}", token);
             tokens.push(token);
         }
 
@@ -85,15 +86,12 @@ impl Lexer {
         }
         if current_char.is_alphabetic() {
             while let Some(c) = self.peek_char() {
-                println!("current char: {}, next peek:{}", current_char, c);
                 if c.is_alphabetic() {
                     self.read_char();
                 } else {
                     break;
                 }
             }
-
-            println!("Reading char at {}...{}", position, self.position);
 
             let s:String = (&self.input[position..self.position]).to_string();
             return self.get_token(token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
@@ -132,8 +130,6 @@ impl Lexer {
     fn increment_position(&mut self) {
         self.position = self.position + 1;
         self.read_position = self.position + 1;
-
-        println!("Increment positions, current: {}, read: {}", self.position, self.read_position);
     }
 
     fn has_more_token(&self) -> bool {
