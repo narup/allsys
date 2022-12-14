@@ -28,6 +28,12 @@ impl Lexer {
             if matches!(token.token_type, token::TokenType::Whitespace) {
                 continue;
             }
+            if matches!(token.token_type, token::TokenType::Comment) {
+                //for comment token we just consume the rest of the line
+                while !self.match_next_char('\n') {
+                    continue;
+                }
+            }
             if matches!(token.token_type, token::TokenType::Illegal) {
                 print_error(format!("uncrecognized character '{}' at col {}", token.val, token.col).as_str());
                 println!("^^^exiting program execution^^^");
@@ -44,28 +50,53 @@ impl Lexer {
         match next_char {
             Some(c) => match c {
                 ' ' | '\r' | '\n' | '\t' => {
-                    return self.get_token(token::TokenType::Whitespace, token::WHITESPACE)
+                    return self.single_char_token(token::TokenType::Whitespace)
                 }
-                '\0' => return self.get_token(token::TokenType::EndOfFile, token::EOF),
-                '+' => return self.get_token(token::TokenType::Plus, token::PLUS),
-                '-' => return self.get_token(token::TokenType::Minus, token::MINUS),
-                '*' => return self.get_token(token::TokenType::Multiply, token::MULTIPLY),
-                '/' => return self.get_token(token::TokenType::Divide, token::DIVIDE),
-                '%' => return self.get_token(token::TokenType::Modulo, token::MODULO),
-                '(' => return self.get_token(token::TokenType::LeftParen, token::LPAREN),
-                ')' => return self.get_token(token::TokenType::RightParen, token::RPAREN),
-                '{' => return self.get_token(token::TokenType::LeftBrace, token::LBRACE),
-                '}' => return self.get_token(token::TokenType::RightBrace, token::RBRACE),
-                '[' => return self.get_token(token::TokenType::LeftBracket, token::LBRACKET),
-                ']' => return self.get_token(token::TokenType::RightBracket, token::RBRACKET),
-                '=' => return self.get_token(token::TokenType::Assign, token::ASSIGN),
-                ',' => return self.get_token(token::TokenType::Comma, token::COMMA),
-                ':' => return self.get_token(token::TokenType::Colon, token::COLON),
-                '>' => return self.get_token(token::TokenType::GreaterThan, token::GREATER_THAN),
-                '<' => return self.get_token(token::TokenType::LesserThan, token::LESSER_THAN),
+                '\0' => return self.single_char_token(token::TokenType::EndOfFile),
+                '+' => return self.single_char_token(token::TokenType::Plus),
+                '-' => return self.single_char_token(token::TokenType::Minus),
+                '*' => return self.single_char_token(token::TokenType::Multiply),
+                '/' => return self.multi_char_token('/', token::TokenType::Comment, token::TokenType::Divide),
+                '%' => return self.single_char_token(token::TokenType::Modulo),
+                '(' => return self.single_char_token(token::TokenType::LeftParen),
+                ')' => return self.single_char_token(token::TokenType::RightParen),
+                '{' => return self.single_char_token(token::TokenType::LeftBrace),
+                '}' => return self.single_char_token(token::TokenType::RightBrace),
+                '[' => return self.single_char_token(token::TokenType::LeftBracket),
+                ']' => return self.single_char_token(token::TokenType::RightBracket),
+                ',' => return self.single_char_token(token::TokenType::Comma),
+                ':' => return self.single_char_token(token::TokenType::Colon),
+                '!' => return self.multi_char_token('=', token::TokenType::NotEqual, token::TokenType::Illegal),
+                '=' => return self.multi_char_token('=', token::TokenType::Equal, token::TokenType::Assign),
+                '>' => return self.multi_char_token('=', token::TokenType::GreaterThanOrEqual, token::TokenType::GreaterThan),
+                '<' => return self.multi_char_token('=', token::TokenType::LesserThanOrEqual, token::TokenType::LesserThan),
+                '&' => return self.multi_char_token('&', token::TokenType::And, token::TokenType::Illegal),
+                '|' => return self.multi_char_token('|', token::TokenType::Or, token::TokenType::Illegal),
                 _ => return self.get_complex_token(c),
             },
-            None => return self.get_token(token::TokenType::Illegal, token::ILLEGAL),
+            None => return self.single_char_token(token::TokenType::Illegal),
+        }
+    }
+
+    fn multi_char_token(&mut self, expected_char: char, expected_token: token::TokenType, default_token: token::TokenType) -> token::Token {
+        if self.match_next_char(expected_char) {
+            self.single_char_token(expected_token)
+        } else {
+            self.single_char_token(default_token)
+        }
+    }
+
+    fn match_next_char(&mut self, expected_char: char) -> bool {
+        let next_char = self.read_char();
+        match next_char {
+            Some(c) => {
+                if expected_char == c {
+                    return true
+                } else {
+                    return false
+                }
+            }
+            None => return false
         }
     }
 
@@ -82,7 +113,7 @@ impl Lexer {
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return self.get_token(token::TokenType::Number, Box::leak(s.into_boxed_str()));
+            return self.get_token_with_val(token::TokenType::Number, Box::leak(s.into_boxed_str()));
         }
         if current_char.is_alphabetic() {
             while let Some(c) = self.peek_char() {
@@ -94,14 +125,19 @@ impl Lexer {
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return self.get_token(token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
+            return self.get_token_with_val(token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
         }
 
         let s = String::from(current_char);
-        return self.get_token(token::TokenType::Illegal, Box::leak(s.into_boxed_str()));
+        return self.get_token_with_val(token::TokenType::Illegal, Box::leak(s.into_boxed_str()));
     }
 
-    fn get_token(&mut self, token_type: token::TokenType, val: &'static str) -> token::Token {
+    fn single_char_token(&mut self, token_type: token::TokenType) -> token::Token {
+        let val = token_type.as_str();
+        return self.get_token_with_val(token_type, val);
+    }
+
+    fn get_token_with_val(&mut self, token_type: token::TokenType, val: &'static str) -> token::Token {
         token::Token {
             col: self.position,
             token_type,
@@ -165,7 +201,8 @@ mod tests {
     // contains the map of all the keywords
     fn test_cases_map() -> HashMap<String, Vec<token::Token>> {
         let mut map = HashMap::new();
-        map.insert("x = 2".to_string(), test_tokens_1());
+        map.insert("x = 2 //this is puran\n".to_string(), test_tokens_1());
+        map.insert("val == 5 && val != 200".to_string(), test_tokens_2());
         map
     }
 
@@ -214,6 +251,58 @@ mod tests {
         output_tokens.push(token::Token {
             token_type: token::TokenType::Number,
             val: "2",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Comment,
+            val: "//",
+            col: 4,
+        });
+
+        output_tokens
+    }
+
+fn test_tokens_2() -> Vec<token::Token>{
+        let mut output_tokens: Vec<token::Token> = Vec::new();
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Identifier,
+            val: "val",
+            col: 1,
+        });
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Equal,
+            val: "==",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Number,
+            val: "5",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::And,
+            val: "&&",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Identifier,
+            val: "val",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::NotEqual,
+            val: "!=",
+            col: 4,
+        });
+
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Number,
+            val: "200",
             col: 4,
         });
 

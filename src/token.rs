@@ -18,6 +18,7 @@ pub static LBRACE: &'static str = "{";
 pub static RBRACE: &'static str = "}";
 pub static COMMA: &'static str = ",";
 pub static COLON: &'static str = ":";
+pub static COMMENT: &'static str = "//";
 //comparators
 pub static GREATER_THAN: &'static str = ">";
 pub static LESSER_THAN: &'static str = "<";
@@ -46,8 +47,12 @@ pub static CONTINUE: &'static str = "continue";
 pub static BREAK: &'static str = "break";
 pub static TRUE: &'static str = "true";
 pub static FALSE: &'static str = "false";
-pub static OR: &'static str = "or";
-pub static AND: &'static str = "and";
+pub static OR: &'static str = "||";
+pub static AND: &'static str = "&&";
+
+pub static IDENT: &'static str = "IDENT";
+pub static NUMBER: &'static str = "NUMBER";
+pub static STRING: &'static str = "STRING";
 
 #[derive(Debug)]
 pub struct Token {
@@ -61,20 +66,17 @@ pub enum TokenType {
     Illegal,
     Whitespace,
     EndOfFile,
-
     //identifier + literals
     Identifier,
     Number,
     String,
     Assign,
-
     //Operators
     Plus,
     Minus,
     Multiply,
     Divide,
     Modulo,
-
     //comparators
     Equal,
     NotEqual,
@@ -82,18 +84,16 @@ pub enum TokenType {
     LesserThan,
     GreaterThanOrEqual,
     LesserThanOrEqual,
-
     //Delimiters
     Comma,
     Colon,
-
     LeftParen,
     RightParen,
     LeftBrace,
     RightBrace,
     LeftBracket,
     RightBracket,
-
+    Comment,
     //Keywords
     Def,
     Defp,
@@ -113,4 +113,56 @@ pub enum TokenType {
     Error,
     Handle,
     Raise,
+}
+
+impl TokenType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TokenType::Illegal => ILLEGAL,
+            TokenType::Whitespace => WHITESPACE,
+            TokenType::EndOfFile => EOF,
+            TokenType::Identifier => IDENT,
+            TokenType::Number => NUMBER,
+            TokenType::String => STRING,
+            TokenType::Assign => ASSIGN,
+            TokenType::Plus => PLUS,
+            TokenType::Minus => MINUS,
+            TokenType::Multiply => MULTIPLY,
+            TokenType::Divide => DIVIDE,
+            TokenType::Modulo => MODULO,
+            TokenType::Equal => EQ,
+            TokenType::NotEqual => NEQ,
+            TokenType::GreaterThan => GREATER_THAN,
+            TokenType::LesserThan => LESSER_THAN,
+            TokenType::GreaterThanOrEqual => GREATER_AND_EQ,
+            TokenType::LesserThanOrEqual => LESSER_AND_EQ,
+            TokenType::Comma => COMMA,
+            TokenType::Colon => COLON,
+            TokenType::LeftParen => LPAREN,
+            TokenType::RightParen => RPAREN,
+            TokenType::LeftBrace => LBRACE,
+            TokenType::RightBrace => RBRACE,
+            TokenType::LeftBracket => LBRACKET,
+            TokenType::RightBracket => RBRACKET,
+            TokenType::Comment => COMMENT,
+            TokenType::Def => DEF,
+            TokenType::Defp => DEFP,
+            TokenType::Let => LET,
+            TokenType::Var => VAR,
+            TokenType::If => IF,
+            TokenType::Else => ELSE,
+            TokenType::ElsIf => ELSIF,
+            TokenType::For => FOR,
+            TokenType::Case => CASE,
+            TokenType::True => TRUE,
+            TokenType::False => FALSE,
+            TokenType::Or => OR,
+            TokenType::And => AND,
+            TokenType::None => NONE,
+            TokenType::Continue => CONTINUE,
+            TokenType::Error => ERROR,
+            TokenType::Handle => HANDLE,
+            TokenType::Raise => RAISE,
+        }
+    }
 }
