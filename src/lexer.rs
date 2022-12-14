@@ -7,6 +7,7 @@ use crate::token;
 pub struct Lexer {
     input: String,
     position: usize, // current position in input (points to current char)
+    line: usize,
     read_position: usize, // read position to look ahead
 }
 
@@ -49,7 +50,11 @@ impl Lexer {
         let next_char = self.read_char();
         match next_char {
             Some(c) => match c {
-                ' ' | '\r' | '\n' | '\t' => {
+                ' ' | '\r' | '\t' => {
+                    return self.single_char_token(token::TokenType::Whitespace)
+                }
+                '\n' => {
+                    self.line = self.line + 1;
                     return self.single_char_token(token::TokenType::Whitespace)
                 }
                 '\0' => return self.single_char_token(token::TokenType::EndOfFile),
@@ -182,6 +187,7 @@ pub fn new(input: String) -> Lexer {
         input: input.to_string(),
         position: 0,
         read_position: 0,
+        line: 0,
     }
 }
 
