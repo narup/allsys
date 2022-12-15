@@ -32,6 +32,7 @@ impl Lexer {
             if matches!(token.token_type, token::TokenType::Comment) {
                 //for comment token we just consume the rest of the line
                 while !self.match_next_char('\n') {
+                    self.increment_position();
                     continue;
                 }
             }
@@ -77,6 +78,7 @@ impl Lexer {
                 '<' => return self.multi_char_token('=', token::TokenType::LesserThanOrEqual, token::TokenType::LesserThan),
                 '&' => return self.multi_char_token('&', token::TokenType::And, token::TokenType::Illegal),
                 '|' => return self.multi_char_token('|', token::TokenType::Or, token::TokenType::Illegal),
+                '"' => return self.get_string_token(),
                 _ => return self.get_complex_token(c),
             },
             None => return self.single_char_token(token::TokenType::Illegal),
@@ -85,24 +87,25 @@ impl Lexer {
 
     fn multi_char_token(&mut self, expected_char: char, expected_token: token::TokenType, default_token: token::TokenType) -> token::Token {
         if self.match_next_char(expected_char) {
+            self.increment_position();
             self.single_char_token(expected_token)
         } else {
             self.single_char_token(default_token)
         }
     }
 
-    fn match_next_char(&mut self, expected_char: char) -> bool {
-        let next_char = self.read_char();
-        match next_char {
-            Some(c) => {
-                if expected_char == c {
-                    return true
-                } else {
-                    return false
-                }
-            }
-            None => return false
+    fn get_string_token(&mut self) -> token::Token {
+        let position = self.position;
+        while !self.match_next_char('"') && self.has_more_token() {
+            self.increment_position();
         }
+
+        //skip ending '"'
+        self.increment_position();
+
+        // Trim the surrounding quotes
+        let s:String = (&self.input[position..self.position - 1]).to_string();
+        return self.get_token_with_val(token::TokenType::String, Box::leak(s.into_boxed_str()));
     }
 
     fn get_complex_token(&mut self, current_char: char) -> token::Token {
@@ -147,6 +150,20 @@ impl Lexer {
             col: self.position,
             token_type,
             val,
+        }
+    }
+
+    fn match_next_char(&mut self, expected_char: char) -> bool {
+        let next_char = self.peek_char();
+        match next_char {
+            Some(c) => {
+                if expected_char == c {
+                    return true
+                } else {
+                    return false
+                }
+            }
+            None => return false
         }
     }
 
@@ -209,6 +226,7 @@ mod tests {
         let mut map = HashMap::new();
         map.insert("x = 2 //this is puran\n".to_string(), test_tokens_1());
         map.insert("val == 5 && val != 200".to_string(), test_tokens_2());
+        map.insert("y == \"this is my string\"".to_string(), test_tokens_3());
         map
     }
 
@@ -314,4 +332,27 @@ fn test_tokens_2() -> Vec<token::Token>{
 
         output_tokens
     }
+}
+
+fn test_tokens_3() -> Vec<token::Token>{
+    let mut output_tokens: Vec<token::Token> = Vec::new();
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::Identifier,
+        val: "y",
+        col: 1,
+    });
+
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::Equal,
+        val: "==",
+        col: 1,
+    });
+
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::String,
+        val: "this is my string",
+        col: 1,
+    });
+
+    return output_tokens
 }
