@@ -41,6 +41,11 @@ impl Lexer {
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
+            if matches!(token.token_type, token::TokenType::UnterminatedString) {
+                print_error(format!("Unterminated string '{}...' at col {}", token.val, token.col).as_str());
+                println!("^^^exiting program execution^^^");
+                process::exit(1);
+            }
             tokens.push(token);
         }
 
@@ -98,6 +103,15 @@ impl Lexer {
         let position = self.position;
         while !self.match_next_char('"') && self.has_more_token() {
             self.increment_position();
+        }
+
+        if !self.has_more_token() {
+            let mut end_position = self.position;
+            if end_position > 30 {
+                end_position = 30;
+            }
+            let s:String = (&self.input[position..end_position]).to_string();
+            return self.get_token_with_val(token::TokenType::UnterminatedString, Box::leak(s.into_boxed_str()));
         }
 
         //skip ending '"'

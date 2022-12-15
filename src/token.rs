@@ -39,6 +39,7 @@ pub static IF: &'static str = "if";
 pub static ELSE: &'static str = "else";
 pub static ELSIF: &'static str = "elsif";
 pub static RAISE: &'static str = "raise";
+pub static UNTERMINATED_STRING: &'static str = "unterminated string";
 pub static ERROR: &'static str = "error";
 pub static HANDLE: &'static str = "handle";
 pub static CASE: &'static str = "case";
@@ -65,6 +66,7 @@ pub struct Token {
 pub enum TokenType {
     Illegal,
     Whitespace,
+    UnterminatedString,
     EndOfFile,
     //identifier + literals
     Identifier,
@@ -163,6 +165,7 @@ impl TokenType {
             TokenType::Error => ERROR,
             TokenType::Handle => HANDLE,
             TokenType::Raise => RAISE,
+            TokenType::UnterminatedString => UNTERMINATED_STRING,
         }
     }
 }
