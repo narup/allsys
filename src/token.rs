@@ -3,6 +3,7 @@
 pub static ILLEGAL: &'static str = "ILLEGAL";
 pub static EOF: &'static str = "EOF";
 pub static WHITESPACE: &'static str = "WHITESPACE";
+pub static NEWLINE: &'static str = "NEWLINE";
 //single character tokens
 pub static PLUS: &'static str = "+";
 pub static MINUS: &'static str = "-";
@@ -10,7 +11,7 @@ pub static MULTIPLY: &'static str = "*";
 pub static DIVIDE: &'static str = "/";
 pub static MODULO: &'static str = "%";
 pub static LPAREN: &'static str = "(";
-pub static RPAREN: &'static str = "(";
+pub static RPAREN: &'static str = ")";
 pub static LBRACKET: &'static str = "[";
 pub static RBRACKET: &'static str = "]";
 pub static DOT: &'static str = ".";
@@ -63,9 +64,11 @@ pub struct Token {
 }
 
 #[derive(strum_macros::Display, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub enum TokenType {
     Illegal,
     Whitespace,
+    Newline,
     UnterminatedString,
     EndOfFile,
     //identifier + literals
@@ -122,6 +125,7 @@ impl TokenType {
         match self {
             TokenType::Illegal => ILLEGAL,
             TokenType::Whitespace => WHITESPACE,
+            TokenType::Newline => NEWLINE,
             TokenType::EndOfFile => EOF,
             TokenType::Identifier => IDENT,
             TokenType::Number => NUMBER,

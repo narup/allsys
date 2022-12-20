@@ -3,20 +3,39 @@
 use std::collections::HashMap;
 use std::process;
 use crate::token;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref KEYWORDS: HashMap<&'static str, token::TokenType> = {
+        let mut map = HashMap::new();
+        map.insert(token::VAR, token::TokenType::Var);
+        map.insert(token::LET, token::TokenType::Let);
+        map.insert(token::DEF, token::TokenType::Def);
+        map.insert(token::DEFP, token::TokenType::Defp);
+        map.insert(token::IF, token::TokenType::If);
+        map.insert(token::ELSE, token::TokenType::Else);
+        map.insert(token::ELSIF, token::TokenType::ElsIf);
+        map.insert(token::FOR, token::TokenType::For);
+        map.insert(token::CASE, token::TokenType::Case);
+        map.insert(token::CONTINUE, token::TokenType::Continue);
+        map.insert(token::NONE, token::TokenType::None);
+        map.insert(token::TRUE, token::TokenType::True);
+        map.insert(token::FALSE, token::TokenType::False);
+        map.insert(token::AND, token::TokenType::And);
+        map.insert(token::OR, token::TokenType::Or);
+        map.insert(token::ERROR, token::TokenType::Error);
+        map.insert(token::HANDLE, token::TokenType::Handle);
+        map.insert(token::RAISE, token::TokenType::Raise);
+
+        map
+    };
+}
 
 pub struct Lexer {
     input: String,
     position: usize, // current position in input (points to current char)
     line: usize,
     read_position: usize, // read position to look ahead
-}
-
-// contains the map of all the keywords
-fn keyword_map() -> HashMap<&'static str, token::TokenType> {
-    let mut map = HashMap::new();
-    map.insert(token::VAR, token::TokenType::Var);
-    map.insert(token::LET, token::TokenType::Let);
-    map
 }
 
 impl Lexer {
@@ -61,7 +80,7 @@ impl Lexer {
                 }
                 '\n' => {
                     self.line = self.line + 1;
-                    return self.single_char_token(token::TokenType::Whitespace)
+                    return self.single_char_token(token::TokenType::Newline)
                 }
                 '\0' => return self.single_char_token(token::TokenType::EndOfFile),
                 '+' => return self.single_char_token(token::TokenType::Plus),
@@ -130,6 +149,10 @@ impl Lexer {
                 if c.is_digit(10) {
                     self.read_char();
                 } else {
+                    if c == '.' && self.match_next_char('.') {
+                        self.read_char();
+                        continue;
+                    }
                     break;
                 }
             }
@@ -147,7 +170,12 @@ impl Lexer {
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
-            return self.get_token_with_val(token::TokenType::Identifier, Box::leak(s.into_boxed_str()));
+            let token_str:&str = &s;
+            let token = KEYWORDS.get(&token_str);
+            match token {
+                Some(t) => return self.get_token_with_val(*t, Box::leak(s.into_boxed_str())),
+                None => return self.get_token_with_val(token::TokenType::Identifier, Box::leak(s.into_boxed_str())),
+            }
         }
 
         let s = String::from(current_char);
@@ -241,6 +269,7 @@ mod tests {
         map.insert("x = 2 //this is puran\n".to_string(), test_tokens_1());
         map.insert("val == 5 && val != 200".to_string(), test_tokens_2());
         map.insert("y == \"this is my string\"".to_string(), test_tokens_3());
+        map.insert("let x = \"test\"".to_string(), test_tokens_4());
         map
     }
 
@@ -365,6 +394,35 @@ fn test_tokens_3() -> Vec<token::Token>{
     output_tokens.push(token::Token {
         token_type: token::TokenType::String,
         val: "this is my string",
+        col: 1,
+    });
+
+    return output_tokens
+}
+
+fn test_tokens_4() -> Vec<token::Token>{
+    let mut output_tokens: Vec<token::Token> = Vec::new();
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::Let,
+        val: "let",
+        col: 1,
+    });
+
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::Identifier,
+        val: "x",
+        col: 1,
+    });
+
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::Assign,
+        val: "=",
+        col: 1,
+    });
+
+    output_tokens.push(token::Token {
+        token_type: token::TokenType::String,
+        val: "test",
         col: 1,
     });
 
