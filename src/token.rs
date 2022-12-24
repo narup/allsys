@@ -40,7 +40,6 @@ pub static IF: &'static str = "if";
 pub static ELSE: &'static str = "else";
 pub static ELSIF: &'static str = "elsif";
 pub static RAISE: &'static str = "raise";
-pub static UNTERMINATED_STRING: &'static str = "unterminated string";
 pub static ERROR: &'static str = "error";
 pub static HANDLE: &'static str = "handle";
 pub static CASE: &'static str = "case";
@@ -51,10 +50,14 @@ pub static TRUE: &'static str = "true";
 pub static FALSE: &'static str = "false";
 pub static OR: &'static str = "||";
 pub static AND: &'static str = "&&";
+pub static IN: &'static str = "in";
 
 pub static IDENT: &'static str = "IDENT";
 pub static NUMBER: &'static str = "NUMBER";
 pub static STRING: &'static str = "STRING";
+
+pub static UNTERMINATED_STRING: &'static str = "unterminated string";
+pub static INVALID_NUMBER: &'static str = "invalid number value";
 
 #[derive(Debug)]
 pub struct Token {
@@ -67,9 +70,10 @@ pub struct Token {
 #[derive(Clone, Copy)]
 pub enum TokenType {
     Illegal,
+    UnterminatedString,
+    InvalidNumber,
     Whitespace,
     Newline,
-    UnterminatedString,
     EndOfFile,
     //identifier + literals
     Identifier,
@@ -118,6 +122,9 @@ pub enum TokenType {
     Error,
     Handle,
     Raise,
+    In,
+    Module,
+    Print,
 }
 
 impl TokenType {
@@ -169,7 +176,12 @@ impl TokenType {
             TokenType::Error => ERROR,
             TokenType::Handle => HANDLE,
             TokenType::Raise => RAISE,
+            TokenType::In => IN,
+            TokenType::Print => PRINT,
+            TokenType::Module => MODULE,
+
             TokenType::UnterminatedString => UNTERMINATED_STRING,
+            TokenType::InvalidNumber => INVALID_NUMBER,
         }
     }
 }

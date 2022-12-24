@@ -2,12 +2,14 @@
 
 use std::collections::HashMap;
 use std::process;
-use crate::token;
 use lazy_static::lazy_static;
+use crate::token;
 
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, token::TokenType> = {
         let mut map = HashMap::new();
+        map.insert(token::MODULE, token::TokenType::Module);
+        map.insert(token::PRINT, token::TokenType::Print);
         map.insert(token::VAR, token::TokenType::Var);
         map.insert(token::LET, token::TokenType::Let);
         map.insert(token::DEF, token::TokenType::Def);
@@ -56,12 +58,17 @@ impl Lexer {
                 }
             }
             if matches!(token.token_type, token::TokenType::Illegal) {
-                print_error(format!("uncrecognized character '{}' at col {}", token.val, token.col).as_str());
+                print_error(format!("uncrecognized character '{}' at col {}, line {}", token.val, token.col, self.line).as_str());
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
             if matches!(token.token_type, token::TokenType::UnterminatedString) {
-                print_error(format!("Unterminated string '{}...' at col {}", token.val, token.col).as_str());
+                print_error(format!("Unterminated string '{}...' at col {}, line {}", token.val, token.col, self.line).as_str());
+                println!("^^^exiting program execution^^^");
+                process::exit(1);
+            }
+            if matches!(token.token_type, token::TokenType::InvalidNumber) {
+                print_error(format!("Invalid number input '{}...' at col {}, line {}", token.val, token.col, self.line).as_str());
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
@@ -145,28 +152,22 @@ impl Lexer {
         let position = self.position - 1;
         if current_char.is_digit(10) {
             //handle digit
-            while let Some(c) = self.peek_char() {
-                if c.is_digit(10) {
+            while self.peek_char().is_digit(10) {
+                self.read_char();
+            }
+            if self.peek_char() == '.' && self.peek_next_char().is_digit(10) {
+                self.read_char();
+                while self.peek_char().is_digit(10) {
                     self.read_char();
-                } else {
-                    if c == '.' && self.match_next_char('.') {
-                        self.read_char();
-                        continue;
-                    }
-                    break;
                 }
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
             return self.get_token_with_val(token::TokenType::Number, Box::leak(s.into_boxed_str()));
         }
-        if current_char.is_alphabetic() {
-            while let Some(c) = self.peek_char() {
-                if c.is_alphabetic() {
-                    self.read_char();
-                } else {
-                    break;
-                }
+        if current_char.is_alphanumeric() {
+            while self.peek_char().is_alphanumeric() || self.peek_char() == '_' {
+                self.read_char();
             }
 
             let s:String = (&self.input[position..self.position]).to_string();
@@ -197,15 +198,10 @@ impl Lexer {
 
     fn match_next_char(&mut self, expected_char: char) -> bool {
         let next_char = self.peek_char();
-        match next_char {
-            Some(c) => {
-                if expected_char == c {
-                    return true
-                } else {
-                    return false
-                }
-            }
-            None => return false
+        if expected_char == next_char {
+            return true
+        } else {
+            return false
         }
     }
 
@@ -220,11 +216,24 @@ impl Lexer {
         return c;
     }
 
-    fn peek_char(&mut self) -> Option<char> {
-        if self.read_position > self.input.len() {
-            return Some('\0');
+    fn peek_char(&mut self) -> char {
+        if (self.read_position - 1) > self.input.len() {
+            return '\0';
         }
-        self.input.chars().nth(self.read_position - 1)
+        match self.input.chars().nth(self.read_position - 1) {
+            Some(c) => return c,
+            None => return '\0'
+        }
+    }
+
+    fn peek_next_char(&mut self) -> char {
+        if self.read_position > self.input.len() {
+            return '\0';
+        }
+        match self.input.chars().nth(self.read_position ) {
+            Some(c) => return c,
+            None => return '\0'
+        }
     }
 
     fn increment_position(&mut self) {
@@ -246,7 +255,7 @@ pub fn new(input: String) -> Lexer {
         input: input.to_string(),
         position: 0,
         read_position: 0,
-        line: 0,
+        line: 1,
     }
 }
 
@@ -260,16 +269,16 @@ pub fn mod_name() -> String {
 mod tests {
 
     use std::collections::HashMap;
-
     use super::*;
 
     // contains the map of all the keywords
     fn test_cases_map() -> HashMap<String, Vec<token::Token>> {
         let mut map = HashMap::new();
         map.insert("x = 2 //this is puran\n".to_string(), test_tokens_1());
-        map.insert("val == 5 && val != 200".to_string(), test_tokens_2());
+        map.insert("val == 52.50 && y != 200".to_string(), test_tokens_2());
         map.insert("y == \"this is my string\"".to_string(), test_tokens_3());
         map.insert("let x = \"test\"".to_string(), test_tokens_4());
+
         map
     }
 
@@ -287,15 +296,20 @@ mod tests {
     }
 
     fn lexer_test(mut l:Lexer, expected_tokens: Vec<token::Token>) {
+        println!("testing testing testn");
         let tokens = l.parse();
         for (index, t) in tokens.iter().enumerate() {
             let expected_t: Option<&token::Token> = expected_tokens.get(index);
             match expected_t {
                 Some(expected_t) => {
+                    println!("returned token: {:?}", t);
                     assert_eq!(expected_t.val, t.val);
                     assert_eq!(expected_t.token_type, t.token_type);
                 }
-                None => assert!(false),
+                None => {
+                    println!("failed expected assertion on {:?}", t);
+                    assert!(false);
+                }
             }
         }
 
@@ -327,6 +341,12 @@ mod tests {
             col: 4,
         });
 
+        output_tokens.push(token::Token {
+            token_type: token::TokenType::Newline,
+            val: "NEWLINE",
+            col: 4,
+        });
+
         output_tokens
     }
 
@@ -345,7 +365,7 @@ fn test_tokens_2() -> Vec<token::Token>{
 
         output_tokens.push(token::Token {
             token_type: token::TokenType::Number,
-            val: "5",
+            val: "52.50",
             col: 4,
         });
 
@@ -357,7 +377,7 @@ fn test_tokens_2() -> Vec<token::Token>{
 
         output_tokens.push(token::Token {
             token_type: token::TokenType::Identifier,
-            val: "val",
+            val: "y",
             col: 4,
         });
 
