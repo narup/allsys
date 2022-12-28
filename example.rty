@@ -52,6 +52,12 @@ module mymodule {
     }
 }
 
+<html render="server">
+</html>
+
+<html render="browser">
+</html>
+
 mymodule.public_function()
 
 //-- Module ----
