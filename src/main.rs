@@ -3,6 +3,7 @@ use std::io::Write;
 
 mod lexer;
 mod token;
+mod parser;
 
 fn main() {
     println!("Welcome to Rusty!");
@@ -23,9 +24,7 @@ fn main() {
         let mut lexer = lexer::new(input);
         let tokens = lexer.parse();
 
-        println!("Tokens for your input:");
-        for token in tokens {
-            println!("{:?}", token);
-        }
+        let mut parser = parser::new(tokens);
+        parser.parse();
     }
 }

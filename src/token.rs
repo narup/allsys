@@ -60,6 +60,7 @@ pub static UNTERMINATED_STRING: &'static str = "unterminated string";
 pub static INVALID_NUMBER: &'static str = "invalid number value";
 
 #[derive(Debug)]
+#[derive(Copy, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub val: &'static str,
