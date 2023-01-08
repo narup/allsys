@@ -59,16 +59,14 @@ pub static STRING: &'static str = "STRING";
 pub static UNTERMINATED_STRING: &'static str = "unterminated string";
 pub static INVALID_NUMBER: &'static str = "invalid number value";
 
-#[derive(Debug)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub val: &'static str,
     pub col: usize,
 }
 
-#[derive(strum_macros::Display, Debug, PartialEq, Eq)]
-#[derive(Clone, Copy)]
+#[derive(strum_macros::Display, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokenType {
     Illegal,
     UnterminatedString,
@@ -126,6 +124,14 @@ pub enum TokenType {
     In,
     Module,
     Print,
+}
+
+pub fn new_illegal_token() -> Token {
+    Token {
+        token_type: TokenType::Illegal,
+        val: ILLEGAL,
+        col: 0,
+    }
 }
 
 impl TokenType {

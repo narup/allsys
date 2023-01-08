@@ -2,8 +2,8 @@ use std::io;
 use std::io::Write;
 
 mod lexer;
-mod token;
 mod parser;
+mod token;
 
 fn main() {
     println!("Welcome to Rusty!");
@@ -14,9 +14,10 @@ fn main() {
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
-        io::stdin().read_line(&mut input)
+        io::stdin()
+            .read_line(&mut input)
             .expect("Error reading the input");
-        
+
         if input.len() == 0 || input.len() == 1 {
             continue;
         }

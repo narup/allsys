@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
+use crate::token;
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::process;
-use lazy_static::lazy_static;
-use crate::token;
 
 lazy_static! {
     static ref KEYWORDS: HashMap<&'static str, token::TokenType> = {
@@ -58,17 +58,35 @@ impl Lexer {
                 }
             }
             if matches!(token.token_type, token::TokenType::Illegal) {
-                print_error(format!("uncrecognized character '{}' at col {}, line {}", token.val, token.col, self.line).as_str());
+                print_error(
+                    format!(
+                        "uncrecognized character '{}' at col {}, line {}",
+                        token.val, token.col, self.line
+                    )
+                    .as_str(),
+                );
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
             if matches!(token.token_type, token::TokenType::UnterminatedString) {
-                print_error(format!("Unterminated string '{}...' at col {}, line {}", token.val, token.col, self.line).as_str());
+                print_error(
+                    format!(
+                        "Unterminated string '{}...' at col {}, line {}",
+                        token.val, token.col, self.line
+                    )
+                    .as_str(),
+                );
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
             if matches!(token.token_type, token::TokenType::InvalidNumber) {
-                print_error(format!("Invalid number input '{}...' at col {}, line {}", token.val, token.col, self.line).as_str());
+                print_error(
+                    format!(
+                        "Invalid number input '{}...' at col {}, line {}",
+                        token.val, token.col, self.line
+                    )
+                    .as_str(),
+                );
                 println!("^^^exiting program execution^^^");
                 process::exit(1);
             }
@@ -82,18 +100,22 @@ impl Lexer {
         let next_char = self.read_char();
         match next_char {
             Some(c) => match c {
-                ' ' | '\r' | '\t' => {
-                    return self.single_char_token(token::TokenType::Whitespace)
-                }
+                ' ' | '\r' | '\t' => return self.single_char_token(token::TokenType::Whitespace),
                 '\n' => {
                     self.line = self.line + 1;
-                    return self.single_char_token(token::TokenType::Newline)
+                    return self.single_char_token(token::TokenType::Newline);
                 }
                 '\0' => return self.single_char_token(token::TokenType::EndOfFile),
                 '+' => return self.single_char_token(token::TokenType::Plus),
                 '-' => return self.single_char_token(token::TokenType::Minus),
                 '*' => return self.single_char_token(token::TokenType::Multiply),
-                '/' => return self.multi_char_token('/', token::TokenType::Comment, token::TokenType::Divide),
+                '/' => {
+                    return self.multi_char_token(
+                        '/',
+                        token::TokenType::Comment,
+                        token::TokenType::Divide,
+                    )
+                }
                 '%' => return self.single_char_token(token::TokenType::Modulo),
                 '(' => return self.single_char_token(token::TokenType::LeftParen),
                 ')' => return self.single_char_token(token::TokenType::RightParen),
@@ -103,12 +125,48 @@ impl Lexer {
                 ']' => return self.single_char_token(token::TokenType::RightBracket),
                 ',' => return self.single_char_token(token::TokenType::Comma),
                 ':' => return self.single_char_token(token::TokenType::Colon),
-                '!' => return self.multi_char_token('=', token::TokenType::NotEqual, token::TokenType::Illegal),
-                '=' => return self.multi_char_token('=', token::TokenType::Equal, token::TokenType::Assign),
-                '>' => return self.multi_char_token('=', token::TokenType::GreaterThanOrEqual, token::TokenType::GreaterThan),
-                '<' => return self.multi_char_token('=', token::TokenType::LesserThanOrEqual, token::TokenType::LesserThan),
-                '&' => return self.multi_char_token('&', token::TokenType::And, token::TokenType::Illegal),
-                '|' => return self.multi_char_token('|', token::TokenType::Or, token::TokenType::Illegal),
+                '!' => {
+                    return self.multi_char_token(
+                        '=',
+                        token::TokenType::NotEqual,
+                        token::TokenType::Illegal,
+                    )
+                }
+                '=' => {
+                    return self.multi_char_token(
+                        '=',
+                        token::TokenType::Equal,
+                        token::TokenType::Assign,
+                    )
+                }
+                '>' => {
+                    return self.multi_char_token(
+                        '=',
+                        token::TokenType::GreaterThanOrEqual,
+                        token::TokenType::GreaterThan,
+                    )
+                }
+                '<' => {
+                    return self.multi_char_token(
+                        '=',
+                        token::TokenType::LesserThanOrEqual,
+                        token::TokenType::LesserThan,
+                    )
+                }
+                '&' => {
+                    return self.multi_char_token(
+                        '&',
+                        token::TokenType::And,
+                        token::TokenType::Illegal,
+                    )
+                }
+                '|' => {
+                    return self.multi_char_token(
+                        '|',
+                        token::TokenType::Or,
+                        token::TokenType::Illegal,
+                    )
+                }
                 '"' => return self.get_string_token(),
                 _ => return self.get_complex_token(c),
             },
@@ -116,7 +174,12 @@ impl Lexer {
         }
     }
 
-    fn multi_char_token(&mut self, expected_char: char, expected_token: token::TokenType, default_token: token::TokenType) -> token::Token {
+    fn multi_char_token(
+        &mut self,
+        expected_char: char,
+        expected_token: token::TokenType,
+        default_token: token::TokenType,
+    ) -> token::Token {
         if self.match_next_char(expected_char) {
             self.increment_position();
             self.single_char_token(expected_token)
@@ -136,15 +199,18 @@ impl Lexer {
             if end_position > 30 {
                 end_position = 30;
             }
-            let s:String = (&self.input[position..end_position]).to_string();
-            return self.get_token_with_val(token::TokenType::UnterminatedString, Box::leak(s.into_boxed_str()));
+            let s: String = (&self.input[position..end_position]).to_string();
+            return self.get_token_with_val(
+                token::TokenType::UnterminatedString,
+                Box::leak(s.into_boxed_str()),
+            );
         }
 
         //skip ending '"'
         self.increment_position();
 
         // Trim the surrounding quotes
-        let s:String = (&self.input[position..self.position - 1]).to_string();
+        let s: String = (&self.input[position..self.position - 1]).to_string();
         return self.get_token_with_val(token::TokenType::String, Box::leak(s.into_boxed_str()));
     }
 
@@ -162,20 +228,26 @@ impl Lexer {
                 }
             }
 
-            let s:String = (&self.input[position..self.position]).to_string();
-            return self.get_token_with_val(token::TokenType::Number, Box::leak(s.into_boxed_str()));
+            let s: String = (&self.input[position..self.position]).to_string();
+            return self
+                .get_token_with_val(token::TokenType::Number, Box::leak(s.into_boxed_str()));
         }
         if current_char.is_alphanumeric() {
             while self.peek_char().is_alphanumeric() || self.peek_char() == '_' {
                 self.read_char();
             }
 
-            let s:String = (&self.input[position..self.position]).to_string();
-            let token_str:&str = &s;
+            let s: String = (&self.input[position..self.position]).to_string();
+            let token_str: &str = &s;
             let token = KEYWORDS.get(&token_str);
             match token {
                 Some(t) => return self.get_token_with_val(*t, Box::leak(s.into_boxed_str())),
-                None => return self.get_token_with_val(token::TokenType::Identifier, Box::leak(s.into_boxed_str())),
+                None => {
+                    return self.get_token_with_val(
+                        token::TokenType::Identifier,
+                        Box::leak(s.into_boxed_str()),
+                    )
+                }
             }
         }
 
@@ -188,7 +260,11 @@ impl Lexer {
         return self.get_token_with_val(token_type, val);
     }
 
-    fn get_token_with_val(&mut self, token_type: token::TokenType, val: &'static str) -> token::Token {
+    fn get_token_with_val(
+        &mut self,
+        token_type: token::TokenType,
+        val: &'static str,
+    ) -> token::Token {
         token::Token {
             col: self.position,
             token_type,
@@ -199,9 +275,9 @@ impl Lexer {
     fn match_next_char(&mut self, expected_char: char) -> bool {
         let next_char = self.peek_char();
         if expected_char == next_char {
-            return true
+            return true;
         } else {
-            return false
+            return false;
         }
     }
 
@@ -222,7 +298,7 @@ impl Lexer {
         }
         match self.input.chars().nth(self.read_position - 1) {
             Some(c) => return c,
-            None => return '\0'
+            None => return '\0',
         }
     }
 
@@ -230,9 +306,9 @@ impl Lexer {
         if self.read_position > self.input.len() {
             return '\0';
         }
-        match self.input.chars().nth(self.read_position ) {
+        match self.input.chars().nth(self.read_position) {
             Some(c) => return c,
-            None => return '\0'
+            None => return '\0',
         }
     }
 
@@ -268,8 +344,8 @@ pub fn mod_name() -> String {
 #[cfg(test)]
 mod tests {
 
-    use std::collections::HashMap;
     use super::*;
+    use std::collections::HashMap;
 
     // contains the map of all the keywords
     fn test_cases_map() -> HashMap<String, Vec<token::Token>> {
@@ -295,7 +371,7 @@ mod tests {
         }
     }
 
-    fn lexer_test(mut l:Lexer, expected_tokens: Vec<token::Token>) {
+    fn lexer_test(mut l: Lexer, expected_tokens: Vec<token::Token>) {
         println!("testing testing testn");
         let tokens = l.parse();
         for (index, t) in tokens.iter().enumerate() {
@@ -316,7 +392,7 @@ mod tests {
         println!("test passed");
     }
 
-    fn test_tokens_1() -> Vec<token::Token>{
+    fn test_tokens_1() -> Vec<token::Token> {
         let mut output_tokens: Vec<token::Token> = Vec::new();
         output_tokens.push(token::Token {
             token_type: token::TokenType::Identifier,
@@ -350,7 +426,7 @@ mod tests {
         output_tokens
     }
 
-fn test_tokens_2() -> Vec<token::Token>{
+    fn test_tokens_2() -> Vec<token::Token> {
         let mut output_tokens: Vec<token::Token> = Vec::new();
         output_tokens.push(token::Token {
             token_type: token::TokenType::Identifier,
@@ -397,7 +473,7 @@ fn test_tokens_2() -> Vec<token::Token>{
     }
 }
 
-fn test_tokens_3() -> Vec<token::Token>{
+fn test_tokens_3() -> Vec<token::Token> {
     let mut output_tokens: Vec<token::Token> = Vec::new();
     output_tokens.push(token::Token {
         token_type: token::TokenType::Identifier,
@@ -417,10 +493,10 @@ fn test_tokens_3() -> Vec<token::Token>{
         col: 1,
     });
 
-    return output_tokens
+    return output_tokens;
 }
 
-fn test_tokens_4() -> Vec<token::Token>{
+fn test_tokens_4() -> Vec<token::Token> {
     let mut output_tokens: Vec<token::Token> = Vec::new();
     output_tokens.push(token::Token {
         token_type: token::TokenType::Let,
@@ -446,5 +522,5 @@ fn test_tokens_4() -> Vec<token::Token>{
         col: 1,
     });
 
-    return output_tokens
+    return output_tokens;
 }
