@@ -10,6 +10,35 @@ pub trait Expression {
     fn value(&self) -> String;
 }
 
+pub struct UnaryExpression {
+    token: Option<token::Token>,
+    expr: Option<Box<dyn Expression>>,
+}
+
+impl Expression for UnaryExpression {
+    fn name(&self) -> String {
+        "unary".to_string()
+    }
+
+    fn value(&self) -> String {
+        let expr_val = match &self.expr {
+            Some(er) => er.value(),
+            None => "".to_string(),
+        };
+
+        let opr = match self.token {
+            Some(t) => t.val,
+            None => "",
+        };
+
+        if expr_val == "" && opr == "" {
+            return "val".to_string();
+        }
+
+        format!("{} {}", expr_val, opr)
+    }
+}
+
 pub struct BinaryExpression {
     left: Option<Box<dyn Expression>>,
     right: Option<Box<dyn Expression>>,
@@ -47,6 +76,18 @@ impl Expression for BinaryExpression {
     }
 }
 
+pub struct EmptyExpression {}
+
+impl Expression for EmptyExpression {
+    fn name(&self) -> String {
+        "empty".to_string()
+    }
+
+    fn value(&self) -> String {
+        "".to_string()
+    }
+}
+
 impl Parser {
     pub fn parse(&mut self) -> Box<dyn Expression> {
         println!("Parsing tokens from the lexer:");
@@ -63,37 +104,107 @@ impl Parser {
 
     //equality → comparison ( ( "!=" | "==" ) comparison )* ;
     fn equality(&mut self) -> Box<dyn Expression> {
-        let mut expr = self.comparision();
-        self.advance_token();
+        let expr = self.comparision();
 
-        let term_oprs = vec![token::TokenType::Equal, token::TokenType::NotEqual];
-
-        while self.match_next_token(&term_oprs) {
-            let operator = self.next_token();
-
-            println!("TOKEN: {:?}", operator);
-
-            self.advance_token();
-
-            let right = self.comparision();
-
-            expr = Box::new(BinaryExpression {
-                left: Some(expr),
-                right: Some(right),
-                token: Some(operator),
-            });
-        }
-
-        expr
+        let oprs = vec![token::TokenType::Equal, token::TokenType::NotEqual];
+        self.build_expression(expr, &oprs, "comparision")
     }
 
     //comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
     fn comparision(&mut self) -> Box<dyn Expression> {
+        let expr = self.term();
+
+        let oprs = vec![
+            token::TokenType::GreaterThan,
+            token::TokenType::GreaterThanOrEqual,
+            token::TokenType::LesserThan,
+            token::TokenType::LesserThanOrEqual,
+        ];
+        self.build_expression(expr, &oprs, "term")
+    }
+
+    //term  → factor ( ( "-" | "+" ) factor )* ;
+    fn term(&mut self) -> Box<dyn Expression> {
+        let expr = self.factor();
+
+        let oprs = vec![token::TokenType::Minus, token::TokenType::Plus];
+        self.build_expression(expr, &oprs, "factor")
+    }
+
+    //factor → unary ( ( "/" | "*" ) unary )* ;
+    fn factor(&mut self) -> Box<dyn Expression> {
+        let expr = self.unary();
+
+        let oprs = vec![token::TokenType::Divide, token::TokenType::Multiply];
+        self.build_expression(expr, &oprs, "unary")
+    }
+
+    //unary → ( "!" | "-" ) unary | primary ;
+    fn unary(&mut self) -> Box<dyn Expression> {
+        let oprs = vec![token::TokenType::Minus];
+        if self.match_next_token(&oprs) {
+            let opr = self.next_token();
+
+            let expr = self.unary();
+
+            return Box::new(UnaryExpression {
+                expr: Some(expr),
+                token: Some(opr),
+            });
+        }
+
+        self.primary()
+    }
+
+    fn primary(&mut self) -> Box<dyn Expression> {
         Box::new(BinaryExpression {
             left: None,
             right: None,
             token: None,
         })
+    }
+
+    fn build_expression(
+        &mut self,
+        expr: Box<dyn Expression>,
+        oprs: &Vec<token::TokenType>,
+        right_expr_type: &str,
+    ) -> Box<dyn Expression> {
+        let mut final_expr = expr;
+
+        println!("build expression: {}", right_expr_type);
+        while self.match_next_token(oprs) {
+            self.advance_token();
+
+            let operator = self.next_token();
+
+            self.advance_token();
+
+            let mut right: Box<dyn Expression> = Box::new(EmptyExpression {});
+            match right_expr_type {
+                "comparision" => {
+                    right = self.comparision();
+                }
+                "term" => {
+                    right = self.term();
+                }
+                "factor" => {
+                    right = self.factor();
+                }
+                "unary" => {
+                    right = self.unary();
+                }
+                _ => println!("not supported"),
+            }
+
+            final_expr = Box::new(BinaryExpression {
+                left: Some(final_expr),
+                right: Some(right),
+                token: Some(operator),
+            });
+        }
+
+        final_expr
     }
 
     fn advance_token(&mut self) {
@@ -111,7 +222,7 @@ impl Parser {
 
     fn match_next_token(&mut self, match_tokens: &Vec<token::TokenType>) -> bool {
         for token_type in match_tokens {
-            if self.check_token(&token_type) {
+            if self.check_token(token_type) {
                 return true;
             }
         }
@@ -120,7 +231,7 @@ impl Parser {
     }
 
     fn check_token(&mut self, next_token: &token::TokenType) -> bool {
-        let token = self.tokens.get(self.current_index);
+        let token = self.tokens.get(self.current_index + 1);
         match token {
             Some(t) => {
                 if t.token_type.as_str() == next_token.as_str() {
@@ -150,7 +261,7 @@ mod tests {
 
     #[test]
     fn parser_expression_test() {
-        let input = String::from("3 == != 5");
+        let input = String::from("3 >= 5 + (2 + 5)");
         let mut lexer = lexer::new(input);
         let tokens = lexer.parse();
 
