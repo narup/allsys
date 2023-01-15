@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::token;
+use crate::token::{self, Token};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::process;
@@ -92,6 +92,13 @@ impl Lexer {
             }
             tokens.push(token);
         }
+
+        let eof_token = Token {
+            token_type: token::TokenType::EndOfFile,
+            val: token::EOF,
+            col: 0,
+        };
+        tokens.push(eof_token);
 
         tokens
     }

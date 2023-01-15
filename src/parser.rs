@@ -100,7 +100,25 @@ impl Expression for LiteralExpression {
             Some(t) => t.val,
             None => "",
         };
-        return val.to_string()
+        return val.to_string();
+    }
+}
+
+pub struct GroupExpression {
+    expr: Option<Box<dyn Expression>>,
+}
+
+impl Expression for GroupExpression {
+    fn name(&self) -> String {
+        return "group".to_string();
+    }
+
+    fn value(&self) -> String {
+        let ex = &self.expr;
+        match ex {
+            Some(e) => return e.value(),
+            None => return "".to_string(),
+        }
     }
 }
 
@@ -186,11 +204,19 @@ impl Parser {
             self.advance_token();
             return Box::new(LiteralExpression { token: Some(token) });
         }
-        Box::new(BinaryExpression {
-            left: None,
-            right: None,
-            token: None,
-        })
+        if self.match_next_token(&vec![token::TokenType::LeftParen]) {
+            self.advance_token();
+
+            let expr = self.expression();
+            if self.check_token(&token::TokenType::RightParen) {
+                self.advance_token();
+                return Box::new(GroupExpression { expr: Some(expr) });
+            } else {
+                panic!("Invalid group expression");
+            }
+        }
+
+        return Box::new(EmptyExpression {});
     }
 
     fn build_expression(
@@ -203,7 +229,7 @@ impl Parser {
 
         while self.match_next_token(oprs) {
             println!("found expression type {}", right_expr_type);
-        
+
             let operator = self.next_token();
 
             self.advance_token();
@@ -262,6 +288,9 @@ impl Parser {
         let token = self.tokens.get(self.current_index);
         match token {
             Some(t) => {
+                if t.token_type == token::TokenType::EndOfFile {
+                    return false;
+                }
                 if t.token_type.as_str() == next_token.as_str() {
                     return true;
                 }
@@ -289,7 +318,7 @@ mod tests {
 
     #[test]
     fn parser_expression_test() {
-        let input = String::from("x >= y + 5");
+        let input = String::from("(x * y) + 5");
         let mut lexer = lexer::new(input);
         let tokens = lexer.parse();
 
