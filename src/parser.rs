@@ -51,8 +51,6 @@ impl Expression for BinaryExpression {
     }
 
     fn value(&self) -> String {
-        println!("Printing the value");
-
         let left_val = match &self.left {
             Some(l) => l.value(),
             None => "".to_string(),
@@ -88,9 +86,27 @@ impl Expression for EmptyExpression {
     }
 }
 
+pub struct LiteralExpression {
+    token: Option<token::Token>,
+}
+
+impl Expression for LiteralExpression {
+    fn name(&self) -> String {
+        return "literal".to_string();
+    }
+
+    fn value(&self) -> String {
+        let val = match self.token {
+            Some(t) => t.val,
+            None => "",
+        };
+        return val.to_string()
+    }
+}
+
 impl Parser {
     pub fn parse(&mut self) -> Box<dyn Expression> {
-        println!("Parsing tokens from the lexer:");
+        println!("Input tokens from the lexer:");
         for token in &self.tokens {
             println!("{:?}", token);
         }
@@ -156,7 +172,20 @@ impl Parser {
         self.primary()
     }
 
+    //primary → NUMBER | STRING | "true" | "false" | "nil"  | "(" expression ")" ;
     fn primary(&mut self) -> Box<dyn Expression> {
+        let oprs = vec![
+            token::TokenType::True,
+            token::TokenType::False,
+            token::TokenType::Number,
+            token::TokenType::String,
+            token::TokenType::Identifier,
+        ];
+        if self.match_next_token(&oprs) {
+            let token = self.next_token();
+            self.advance_token();
+            return Box::new(LiteralExpression { token: Some(token) });
+        }
         Box::new(BinaryExpression {
             left: None,
             right: None,
@@ -172,10 +201,9 @@ impl Parser {
     ) -> Box<dyn Expression> {
         let mut final_expr = expr;
 
-        println!("build expression: {}", right_expr_type);
         while self.match_next_token(oprs) {
-            self.advance_token();
-
+            println!("found expression type {}", right_expr_type);
+        
             let operator = self.next_token();
 
             self.advance_token();
@@ -231,7 +259,7 @@ impl Parser {
     }
 
     fn check_token(&mut self, next_token: &token::TokenType) -> bool {
-        let token = self.tokens.get(self.current_index + 1);
+        let token = self.tokens.get(self.current_index);
         match token {
             Some(t) => {
                 if t.token_type.as_str() == next_token.as_str() {
@@ -261,7 +289,7 @@ mod tests {
 
     #[test]
     fn parser_expression_test() {
-        let input = String::from("3 >= 5 + (2 + 5)");
+        let input = String::from("x >= y + 5");
         let mut lexer = lexer::new(input);
         let tokens = lexer.parse();
 
