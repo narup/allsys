@@ -1,6 +1,1 @@
-# rusty
-Scripting language written in Rust
-
-### Running tests
-``` cargo test -- --nocapture ```
-
+## Playground for learning system programming
