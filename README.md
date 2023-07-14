@@ -12,3 +12,6 @@
 * [Tail call optimization](https://erlang.org/pipermail/erlang-questions/2016-October/090663) - From Erlang
 * [Zig parser combinator](https://devlog.hexops.com/2021/zig-parser-combinators-and-why-theyre-awesome/) Zig, Parser Combinators - and Why They're Awesome
 * [Cross shard transactions at 10 million requests per second](https://dropbox.tech/infrastructure/cross-shard-transactions-at-10-million-requests-per-second)
+* [High-performance browser networking](https://hpbn.co/)
+* [Build your own WebAssembly compiler](https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html)
+* [A cartoon intro to WebAssembly](https://hacks.mozilla.org/2017/02/a-cartoon-intro-to-webassembly/)
