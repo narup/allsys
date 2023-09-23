@@ -1,5 +1,3 @@
-; Bootloader assembly code
-;
 start:
     mov ax, 07C0h
     mov ds, ax ; since we cannot load the value 070Ch directly into ds
@@ -17,7 +15,7 @@ start:
 ; it uses the BIOS service 13h related to hard disks 
 
 load_kernel_from_disk: 
-    mov ax, 0900h
+    mov ax, 0900
     mov es, ax
 
     mov ah, 02h ; service number to read the disk sector into the memory 
@@ -47,7 +45,8 @@ print_string:
     mov ah, 0Eh                  ; 0Eh represnts the service of printing a character on a screen
 
 print_char:
-    loadsb                  ; transfer the first character of the string to the register `al` and increase the value of the si by 1 
+    lodsb                  ; transfer the first character of the string to the register `al` and increase the value of the si by 1
+
     cmp al, 0               ; if 0, we reached the end 
     je printing_finished 
 
