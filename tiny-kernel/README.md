@@ -16,7 +16,8 @@
 - Fat ELF is used to combine binaries for multiple architectures 
 - Bootloader (piece of code) loads kernel of the OS from the disk to the main memory (RAM) and gives kernel the control of the computer 
 - The size of the bootloader is 512 bytes
-- Firmware loads the bootloader from the boot sector in the hard disk to memory address 07C0h. BIOS (Basic Input Output System) in IBM-compatible computers 
+- Firmware loads the bootloader from the boot sector in the hard disk to memory address 07C0h. BIOS (Basic Input Output System) in IBM-compatible computers
+- The firmware can only recognize the data in the first sector as a bootloader when the data finishes with the magic code AA55h
 - BIOS services are divided into categories - video, keyboard, disk, and so on identified with interrupt number 
 - Calling interrupt in assembly is simple `int 0x10`
 - x86 processor uses Von Neuman architecture - both code and the data are stored in the same memory and processor uses this memory to read the instructions 
