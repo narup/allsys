@@ -28,3 +28,5 @@
 - 1 byte == 8-bits, 1 word == 2 bytes == 16-bit, doubleword == 4 bytes == 32-bit 
 - Expression is a part of the code that evaluates a value. For example - x + 1, x == 5 
 - Statement is a part of the code that performs some action, x = y + 1 
+- Based on how the hard disk work where there are plates and each plate has tracks divided into sectors. So, when BIOS loads a bootloader, at first the arm will seek the track number 0 and sector 0, the content of the sector 0 is loaded in the main memory 
+- 
