@@ -2,9 +2,9 @@ package lexer
 
 import "github.com/narup/monkey/token"
 
-//This lexer only supports ASCII characters instead of the full
-//unicode range for simplicity. To support Unicode and UTF-8 we need
-//to change ch from byte to rune
+// This lexer only supports ASCII characters instead of the full
+// unicode range for simplicity. To support Unicode and UTF-8 we need
+// to change ch from byte to rune
 type Lexer struct {
 	input        string
 	position     int  //current position in input (points to current char)
@@ -18,11 +18,11 @@ func New(input string) *Lexer {
 	return l
 }
 
-//NextToken basic structure of this function is to look at the
-//current character under examination (l.ch) and return a token
-//depending on which character it is. Before returning advance the
-//pointers into the input so when we call NextToken() again the
-//l.ch field is already updated.
+// NextToken basic structure of this function is to look at the
+// current character under examination (l.ch) and return a token
+// depending on which character it is. Before returning advance the
+// pointers into the input so when we call NextToken() again the
+// l.ch field is already updated.
 func (l *Lexer) NextToken() token.Token {
 	var tok token.Token
 
@@ -103,8 +103,8 @@ func (l *Lexer) NextToken() token.Token {
 	return tok
 }
 
-//read the next character and advance the read position
-//in the input string
+// read the next character and advance the read position
+// in the input string
 func (l *Lexer) readChar() {
 	if l.readPosition >= len(l.input) {
 		l.ch = 0 //ASCII code for NUL
@@ -123,7 +123,7 @@ func (l *Lexer) readIdentifier() string {
 	return l.input[position:l.position]
 }
 
-//we only read integer numbers to keep things simple!
+// we only read integer numbers to keep things simple!
 func (l *Lexer) readNumber() string {
 	position := l.position
 	for isDigit(l.ch) {
@@ -138,8 +138,8 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
-//similar to readChar except that it doesn't increment
-//l.position and l.readPosition and only peek ahead
+// similar to readChar except that it doesn't increment
+// l.position and l.readPosition and only peek ahead
 func (l *Lexer) peekChar() byte {
 	if l.readPosition >= len(l.input) {
 		return 0
@@ -148,7 +148,7 @@ func (l *Lexer) peekChar() byte {
 	}
 }
 
-//recognize if a character is a letter
+// recognize if a character is a letter
 func isLetter(ch byte) bool {
 	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
 }
